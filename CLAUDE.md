@@ -25,6 +25,9 @@ az account get-access-token --resource https://api.fabric.microsoft.com
 az account get-access-token --resource https://database.windows.net
 ```
 
+The `fabric-skills` plugin reuses Azure CLI sign-in for its remote MCPs.
+See `mcp-setup/README.md` for prerequisites and older registrations overriding the plugin. Keep access tokens out of chat, logs and saved MCP configuration.
+
 ## Fabric REST APIs
 
 All Fabric operations use the REST APIs documented at:
@@ -50,6 +53,7 @@ https://learn.microsoft.com/en-us/rest/api/fabric/articles/
 ### Data Engineering
 - **Lakehouse**: Delta tables, Spark, file management
   - Docs: https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-overview
+  - Project Osmos skill: `skills/project-osmos/SKILL.md` — local-agent orchestration for complex long-running Lakehouse, OneLake, notebook, and Spark outcomes; Fabric portal Copilot receives availability and GitHub Copilot CLI marketplace guidance.
   - Spark skill: `skills/spark-cli/SKILL.md` — notebook authoring and runs, Livy analysis, Spark diagnostics, and the full Materialized Lake View lifecycle.
 - **Notebooks**: PySpark notebooks with mssparkutils
   - Docs: https://learn.microsoft.com/en-us/fabric/data-engineering/how-to-use-notebook
@@ -62,6 +66,7 @@ https://learn.microsoft.com/en-us/rest/api/fabric/articles/
   - Docs: https://learn.microsoft.com/en-us/fabric/data-warehouse/data-warehousing
   - Note: Limited T-SQL surface area - check supported features
   - Skill: `skills/sqldw-cli/SKILL.md` — one skill, three modes: authoring (DDL, DML, ingestion, schema changes), consumption (read-only T-SQL queries), operations (performance diagnostics, slow queries, query insights)
+  - Synapse Dedicated SQL Pool-to-Warehouse migration: use `skills/synapse-migration/SKILL.md`; run source Dedicated Pool SQL with `sqlcmd` and target Fabric Warehouse SQL with the Fabric SQL Endpoint MCP `execute_query` tool. Use `sqldw-cli` for standalone Warehouse work outside that migration.
 
 ### Application Lifecycle Management (ALM)
 - **Deployment Pipelines**: Promote Fabric content across dev/test/prod stages
@@ -124,6 +129,12 @@ https://learn.microsoft.com/en-us/rest/api/fabric/articles/
   - Primary CLI tool: `az rest` via `POST /v1/catalog/search`
   - Token audience: `https://api.fabric.microsoft.com/.default`
 
+### OneLake Catalog Governance
+- **Governance posture**: Tenant-admin and data-owner audits plus guarded remediation for domains, workspace assignment, capacity, sensitivity labels, tags, descriptions, refresh, and item identity
+  - Docs: https://learn.microsoft.com/en-us/fabric/governance/onelake-catalog-govern
+  - Skill: `skills/onelake-catalog-govern-cli/SKILL.md` — select admin-audit, admin-remediate, dataowner-audit, or dataowner-remediate by API surface and intent
+  - Primary CLI tool: `az rest` against Fabric Admin/Core and Power BI REST APIs
+
 ### Business Intelligence
 - **Semantic Models**: DAX, XMLA, Power BI integration, TMDL
   - Docs: https://learn.microsoft.com/en-us/power-bi/connect-data/service-datasets-understand
@@ -134,10 +145,11 @@ https://learn.microsoft.com/en-us/rest/api/fabric/articles/
 - **Power BI Reports**: PBIR/PBIP report projects, visual design, Desktop validation, and Fabric report item management
   - Docs: https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-report
   - Skill docs: https://aka.ms/Report_Authoring_skill_LearnDocs
-  - Planning skill: `skills/powerbi-report-planning/SKILL.md` — requirements, page plan, approval gate
-  - Design skill: `skills/powerbi-report-design/SKILL.md` — archetype routing, layout, theme, accessibility
-  - Authoring skill: `skills/powerbi-report-authoring/SKILL.md` — PBIR/PBIP file mechanics, Desktop reload/screenshot
-  - Management skill: `skills/powerbi-report-management/SKILL.md` — Fabric report item CRUD via `az rest`
+  - Power BI report skill: `skills/powerbi-report-cli/SKILL.md` -- one skill covering the whole report item
+    - Planning mode: requirements, page plan, approval gate
+    - Design mode: archetype routing, layout, theme, accessibility
+    - Authoring mode: PBIR/PBIP file mechanics, Desktop reload/screenshot
+    - Management mode: Fabric report item CRUD via `az rest`
 
 ### Data Science
 - **Data Agents**: Conversational AI over Fabric data sources
@@ -158,6 +170,7 @@ https://learn.microsoft.com/en-us/rest/api/fabric/articles/
 - **Fabric Cost Estimation**: E2E skill for capacity sizing, billing mode strategy, workload CU equivalence
   - Skill: `skills/e2e-fabric-cost-estimation/SKILL.md` — estimate Fabric capacity costs, SKU sizing, RI analysis
   - Uses Azure Retail Prices API (public) and Cost Management API (auth required)
+- **Synapse Migration**: `skills/synapse-migration/SKILL.md` — migrate Synapse Spark, Lake Database/HMS, Dedicated SQL Pool schema and procedures, and explicitly approved dependent procedure callers to Fabric
 
 ## Best Practices
 

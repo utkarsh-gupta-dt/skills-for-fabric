@@ -2,6 +2,135 @@
 
 User-facing changes for the public Microsoft Fabric Skills release.
 
+## [Unreleased]
+
+## [0.3.19] - 2026-10-01
+
+### Changed
+- **`synapse-migration`** -- Dedicated SQL Pool-to-Lakehouse migrations can now optionally repoint exact dependent Azure Data Factory and Synapse procedure callers after their generated Fabric notebooks are ready, while preserving explicit approval and no-automatic-execution safeguards.
+- **`powerbi-report-cli`** -- mandatory validation screenshots now use a
+  temporary per-run directory under the local application-data location when no
+  validation location is supplied. Explicit save/export/keep destinations are
+  retained, while project or synchronized locations receive an exposure warning.
+- **`powerbi-report-cli`** -- multi-turn publish workflows reduce repeated
+  workspace, item, file, and semantic-model discovery while preserving binding
+  validation. Definition downloads retain the required `?format=PBIR` query,
+  and publish flows resolve the supplied workspace name before asking how to
+  handle the semantic model.
+- **`powerbi-report-cli`** -- locked-spec planning now reuses a complete schema
+  and page plan supplied in the request instead of redundantly inspecting an
+  unrelated local report project.
+- **`powerbi-report-cli`** -- greenfield build-and-publish requests now stop at
+  the locked-spec approval barrier until the user approves in a later reply.
+
+### Fixed
+- **`synapse-migration`** -- generated Fabric notebooks are now rejected before publication when their parameter handling could accept missing required values, mis-handle SQL NULL, or alter source behavior.
+- **`synapse-migration`** -- Dedicated Pool discovery now handles incomplete DACPAC scripting safely, schema deployment is resumable without altering incompatible existing targets, notebook publication validates persisted definitions, and approved special-character columns are supported in new Delta tables.
+- **`synapse-migration`** -- Dedicated Pool procedures containing dynamic SQL, cursors, or control-flow loops now remain in manual review instead of being treated as automatic conversion candidates.
+- **`synapse-migration`** -- Dedicated Pool migrations now provide clearer progress and resumable recovery for large conversions while preserving detailed audit evidence.
+- **`powerbi-report-cli`** -- corrected split-reference navigation so report
+  authoring, formatting, preview, theming, and management guidance resolves to
+  the physical continuation file that contains each referenced section.
+
+## [0.3.18] - 2026-09-24
+
+### Added
+- **`skills/powerbi-report-cli`** -- added detailed guidance for same-report
+  drillthrough, bookmarks, buttons and actions, custom visuals, field parameters,
+  KPI visuals, semantic-model binding, and Desktop or service preview workflows.
+- **`project-osmos`** — run complex, long-running Fabric and OneLake data-engineering outcomes from local agents with safe intake, continuation, and task lifecycle guidance; Fabric portal Copilot explains current availability and how to install the Skills for Fabric marketplace in GitHub Copilot CLI.
+
+### Changed
+- **`powerbi-report-cli`** -- strengthened planning, design, authoring, validation, screenshot review, and Fabric publishing guidance, including safer preview routing and pre-publish model-binding checks
+- **`powerbi-report-cli`** -- routes normal Desktop work through
+  `powerbi-report-author preview` and adds model-aware reload guidance with the
+  required semantic-model processing, DAX verification, and rendered review.
+- **`synapse-migration`** now migrates dedicated SQL pools in Synapse workspaces or standalone deployments to Fabric Lakehouse as schema and code artifacts without source rows, or to Fabric Warehouse with compatibility assessment, security migration, validation, and optional separately approved data movement.
+
+### Fixed
+- **`powerbi-report-cli`** -- fixed broken reference anchors and made the
+  planning contract continuation mandatory before producing an approved report
+  specification; split-guide navigation now names the continuation file instead
+  of linking to headings that are not present in the current document.
+
+## [0.3.17] - 2026-09-17
+
+### Added
+- **`skills/semantic-model-authoring`** -- adds guidance for creating, editing, reordering, renaming, and deleting Power BI field parameters through the modeling MCP or TMDL.
+- **`powerbi-report-cli`** -- one Power BI report skill covering the whole report item. It picks the right mode from your request: planning for requirements, scope and the approval gate; design for tone, page archetype, chart choice, layout, colour, typography and accessibility; authoring for local PBIR/PBIP page, visual, filter, slicer, theme and formatting edits plus PBIR validation and Power BI Desktop verification; and management for publishing, rebinding and updating report items in Fabric.
+
+### Changed
+- **`powerbi-authoring` bundle** -- now ships the single `powerbi-report-cli` skill in place of the four separate Power BI report skills. Existing report prompts keep working and you no longer need to pick a skill per phase; ask for the report outcome you want and the skill selects the mode.
+- **FabricIQ MCP server** -- the endpoint moved from `https://api.fabric.microsoft.com/v1/mcp/fabricaihub/integrations/m365` to `https://fabriciq.svc.cloud.microsoft/v1/mcp/fabriciq`, and the required routing header changed from `X-VARIANTS: Fabric.Routing.PowerBIDataExploration` to `X-VARIANTS: Fabric.Routing.FabricIQ.V1`. Your existing token keeps working: the new endpoint accepts both the Power BI audience (`https://analysis.windows.net/powerbi/api`) and the Fabric audience (`https://api.fabric.microsoft.com`), so nothing needs re-minting. The bundled configuration is already updated; if you registered FabricIQ by hand in your own MCP client config, re-register it with the new URL and header — the MCP setup instructions have the updated commands.
+- **FabricIQ skill and agent** -- the `ResolveReportIdFromUrl(url)` tool is replaced by `ResolveFabricItem(fabricItemId=<guid-or-url>)` on the new endpoint. It accepts a bare item GUID (preferred) as well as a supported Fabric or Power BI artifact URL, and returns the canonical `fabricItemId`, `itemType`, `workspaceId` when known, plus optional next-step instructions. The other FabricIQ tools (`DiscoverArtifacts`, `GetReportMetadata`, `GetSemanticModelSchema`, `ValueSearch`, `ExecuteQuery`) are unchanged, so the rest of the documented workflow is unaffected.
+- **APM packaging** -- installing the collection, or the FabricIQ skill on its own, now registers the new endpoint and routing header.
+
+### Removed
+- **`powerbi-report-authoring`**, **`powerbi-report-design`**, **`powerbi-report-management`** and **`powerbi-report-planning`** -- replaced by the matching modes of `powerbi-report-cli`. This is a **rename as well as a merge**: the four skills carried no access-method suffix and the merged skill adds the `-cli` discriminator, so if you pin any of those four skills by name, switch to `powerbi-report-cli`.
+
+### Fixed
+- **FabricIQ lost automatic Azure CLI sign-in in Claude Code** — the bundled plugin attaches a native Azure CLI `headersHelper` to its remote MCP servers by matching the Fabric API host. Because FabricIQ now answers on its own service host, it no longer matched and was shipped as the only remote server in the bundle with no way to authenticate, so its tools failed to connect after install. Host detection now covers the FabricIQ endpoint as well, and all three bundled remote MCP servers again sign in from your existing `az login` with no extra prompt.
+- **Claude Desktop registration was broken for every MCP server, not just FabricIQ** -- the provided registration scripts wrote a bridge entry invoking `@anthropic/mcp-proxy`, which is not a published npm package, so the generated configuration could never start. They now write a pinned `mcp-remote` entry and forward the routing header and bearer token through its `--header` flag, which is what FabricIQ needs to authenticate.
+- **The registration scripts no longer write a Claude credential that cannot work** -- when asked for API-key authentication they produced `Authorization: api-key <key>`, which is not a real authentication scheme, and when asked for bearer authentication without a token they wrote the literal text `${FABRIC_MCP_TOKEN}` as the credential, because Claude passes those values through unchanged instead of substituting them. Both cases now skip the header and tell you exactly what to re-run, so a broken sign-in surfaces immediately instead of as a confusing connection failure later.
+- **Manual VS Code setup instructions** -- the example used the legacy `github.copilot.chat.mcpServers` setting and omitted the routing header and token, so following it produced a server that connected and then failed on every call. It now shows the current `mcp.json` `servers` shape with a `headers` object and a prompted, password-masked token input.
+
+## [0.3.16] - 2026-09-10
+
+### Added
+- Added a root `apm.yml` plus a generated `skills/<name>/apm.yml` for every skill, so a user can install a single skill with `apm install microsoft/skills-for-fabric --skill <name>` instead of a whole plugin bundle.
+- Documented the APM bootstrap and the single-skill install flow, including the scope difference between Copilot CLI (`-g`, `~/.copilot/mcp-config.json`) and VS Code (project scope, `.vscode/mcp.json`).
+
+### Changed
+- Corrected the MCP setup reference in `sqldw-cli` to link the `mcp-setup/README.md` file rather than the directory, so the link resolves for a single installed skill.
+
+### Fixed
+- The `fabric-skills` plugin reuses Azure CLI sign-in for remote MCP connections in local Claude Code. Added matching Codex configuration and guidance for older registrations, without copying access tokens or registering another OAuth application.
+- Improved plugin installation compatibility with older Claude Code versions.
+
+## [0.3.15] - 2026-09-04
+
+
+### Added
+- **`skills/sqldw-cli`** -- added a read-only Capacity Metrics workflow that discovers the installed metrics model, adapts to timestamped or fixed-window schema variants, identifies costly Warehouse and Lakehouse SQL endpoint items, and analyzes every Query Insights request overlapping the Capacity Metrics spike range. Results keep fixed-window capacity health separate from broader item history, disclose timeframe and 30-day Query Insights limits, and treat SQL statement candidates as best-effort correlation because Capacity Metrics Operation Id and Query Insights `distributed_statement_id` are different identifiers.
+- **`onelake-catalog-govern-cli`** -- audits and safely remediates Microsoft Fabric OneLake catalog governance across domains, workspaces, capacities, protection, and curation, with separate permission-aware modes for tenant admins and data owners.
+
+### Changed
+- **`skills/sqldw-cli`** -- expanded composite diagnostics for failed and canceled requests, SQL pool pressure, resource concentration, Lakehouse table health, performance regressions, optimization targets, and user/application activity. Custom SQL pool guidance now uses recurring historical contention and stable application classifiers rather than converting Capacity Metrics CU seconds or Query Insights CPU milliseconds into pool percentages.
+- **`skills/sqldw-cli`** -- made operations follow-ups user-facing: results now turn evidence into concrete actions on the investigated workload, SQL item, capacity, or correlation report, while retaining timezone, retention, lag, and confidence caveats as limitations rather than skill-development suggestions.
+
+### Fixed
+- **`skills/sqldw-cli`** -- corrected pressure intervals to use the complete pool-state event stream and exact pool matching, included canceled requests in non-success analysis, limited Lakehouse health checks to Lakehouse SQL analytics endpoints, and stopped recommending result-set caching while the feature is unavailable.
+- **`skills/sqldw-cli`** -- retained command-less and legitimate Query Insights-referencing requests in historical custom-pool profiles, excluding only agent-labeled diagnostics, and widened duration and CPU aggregation to `bigint`.
+- **`semantic-model-authoring`** -- preserves existing Prep data for AI configuration during unrelated semantic model edits and uses the Power BI modeling MCP for read-only metadata discovery when available.
+- `synapse-migration` now handles Dedicated SQL Pool DACPAC and zipped SQL-project schema and code migrations more reliably, validates generated Spark SQL, safely resumes interrupted operations, and isolates concurrent migrations across multiple datamarts.
+
+## [0.3.14] - 2026-08-26
+
+
+### Added
+- **`databricks-migration`** -- added a guided four-phase workflow for inventorying, preparing, migrating, validating, and cutting over Databricks workloads to Fabric.
+- **`databricks-migration`** -- added post-migration checks for environments, schemas, row counts, notebook and job execution, output comparison, and validation reporting.
+- **`databricks-migration`** -- added troubleshooting guidance for common migration issues involving DLT, namespaces, widgets, Photon, DBFS, streaming, init scripts, and Git integration.
+
+### Changed
+- **Skill descriptions rewritten so the assistant picks the right one more often.** Every skill now states plainly what it owns, what it can do, when to choose it, and which neighbouring skill owns the work next door. Previously several skills described their area only in general terms, so a request that sat between two of them could reach the wrong skill -- or none at all, with the assistant answering from general knowledge instead. Requests that name a specific Fabric item or operation now land on the skill that owns it.
+
+- **The full skill catalog fits comfortably within what the assistant reads at startup.** Only each skill's name and description are loaded up front, and that space is limited. The catalog previously ran close enough to the limit that adding skills risked pushing later ones past it -- and a skill past the limit is known only by its name, so the assistant can no longer tell what it does and chooses between skills on the name alone. The descriptions are now about 40% shorter with no loss of routing accuracy, leaving room for the catalog to grow.
+- **`databricks-migration`** -- expanded migration planning with Blocker, Warning, and Info severity levels, accurate Scala and SparkR compatibility guidance, schema-enabled Lakehouse mapping, and structured failure reporting.
+- **`semantic-model-authoring`** -- enable the `fabric-skills` bundle to use the hosted Power BI modeling service for semantic model authoring, while the `powerbi-authoring` bundle continues to support the local modeling server.
+
+### Fixed
+- **Seven skills regained the exact words people type.** The description rewrite favoured readable prose and, in doing so, dropped the literal tokens a request actually matches on: `MLV` and `OOM` (`spark-cli`), `count rows` and `SELECT` (`sqldw-cli`), `dacpac` and `sys.tables` (`sqldb-cli`), `executeQuery` and `saveAsNativeArtifact` (`dataflows-cli`), `libraryVariables` and `notebookutils` (`variable-library-cli`), and the `Gen1`/`Gen2` "not supported" caveat (`search-consumption-cli`). `git-integration-operations-cli` also lost its exclusions, so a question about `fabric-cicd` or branch switching could be captured by a skill that cannot help -- worse than a miss, because the answer sounds confident. Prose reads better to a reviewer; literals are what match a user's words. All seven are back, every description still inside the 450-character cap, for 361 characters against roughly 3,850 of bundle headroom.
+
+- **`variable-library-cli`'s description was not a grammatical sentence.** "…and valueSets overrides, which consumers can reference a variable and with what syntax across pipelines…" -- a malformed clause in the one field the router reads. Rewritten, and `libraryVariables` and `notebookutils variableLibrary` restored with it.
+
+- **`activator-cli`, `sqldw-cli` and `variable-library-cli`** -- these skills pointed you at skills that no longer exist. Their guidance still referred to `eventstream-authoring-cli`, `eventhouse-consumption-cli`, `spark-authoring-cli` and the separate `sqldb-authoring-cli` / `sqldb-consumption-cli` / `sqldb-operations-cli` skills, all of which were merged into single per-item skills in earlier releases. Handing work to a name that is not installed left the request stranded. They now name the current skills: `eventstream-cli`, `eventhouse-cli`, `spark-cli` and `sqldb-cli`.
+
+- **`sqldb-cli`** -- "run a query against my Fabric SQL database" reached the Warehouse skill instead. `sqldb-cli` presented itself as a design-and-troubleshoot skill and never claimed plain querying, so the Warehouse skill won on the word "query". It now leads with querying a SQL database item, so the request reaches the right engine.
+
+- **Git integration, deployment pipelines, Spark, Variable Library and Fabric IQ** -- several common requests reached the wrong skill or none at all: disconnecting a workspace from Git, asking which permissions or roles a deployment-pipeline stage needs, creating a materialized lake view, asking what a Variable Library value resolves to for a given release, and querying Fabric IQ directly. Each of these now names the case explicitly, so the request reaches the skill that handles it.
+- **`databricks-migration`** -- corrected Databricks inventory commands, schema-enabled Lakehouse creation, Maven and JAR library handling, Environment definition paths, notebook export, Spark Job Definition deployment, job execution URLs, Spark version validation, and cancelled-versus-timed-out run handling.
+
 ## [0.3.13] - 2026-08-20
 
 

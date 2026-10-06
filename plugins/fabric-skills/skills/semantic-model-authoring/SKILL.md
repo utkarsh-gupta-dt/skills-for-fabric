@@ -1,11 +1,6 @@
 ---
 name: semantic-model-authoring
-description: >  
-  Author and inspect Power BI semantic models and their metadata: list tables, columns, measures, relationships; create, edit, deploy, refresh, and manage models; optimize DAX; build Import, DirectQuery, and Direct Lake models; configure data sources, permissions, connections; and prepare for AI/Copilot.
-  Load this skill before acting on any semantic model authoring, metadata, or read-only inspection request: it picks the correct tool and method for the environment and permissions.
-  Authoring-scoped: does not answer natural-language or data questions about a model's data.
-  Does NOT author report visuals, manage workspaces, or manage RLS/OLS roles.
-  Triggers: "create or edit a semantic model", "create or edit a DAX measure", "discover semantic model metadata", "list tables, columns, or measures in a semantic model", "refresh semantic model", "deploy semantic model to Fabric",  "prepare semantic model for AI/Copilot", "set semantic model permissions".
+description: "Manages Power BI semantic models, including tables, columns, measures, relationships, field parameters, DAX, Import, DirectQuery and Direct Lake designs, sources, connections, permissions, refresh, and deployment. Load this skill before acting on a semantic model, unless it is part of publishing a PBIP project, which powerbi-report-cli owns. For natural-language data questions use fabriciq; for visuals use powerbi-report-cli."
 ---
 
 > **Telemetry — MANDATORY.** Every `api.fabric.microsoft.com` call must carry
@@ -29,6 +24,7 @@ Use this decision tree to route to the correct workflow based on user intent:
 | Inspect or discover model metadata (tables, columns, measures, relationships)   | [Discover Semantic Model Metadata](#workflow-discover-semantic-model-metadata)      |
 | Add/edit semantic model objects (e.g. measures, tables, columns, relationships) | [Modify an Existing Model](#workflow-modify-an-existing-model)                       |
 | Write or refactor DAX code                                                      | [Modify an Existing Model](#workflow-modify-an-existing-model)                       |
+| Create/edit a field parameter                                                   | [Author a Field Parameter](#workflow-author-a-field-parameter)                       |
 | Improve DAX query or measure performance                                        | [Optimize DAX Performance](#workflow-optimize-dax-performance)                       |
 | Analyze semantic model against best practices                                   | [Analyze Best Practices](#workflow-analyze-best-practices)                           |
 | Prepare a semantic model for AI consumption (Copilot / Data Agents)             | [Semantic Model AI Readiness](#workflow-semantic-model-ai-readiness)                 |
@@ -50,6 +46,7 @@ Load these references on demand when a workflow step requires them. Do not load 
 | TMDL Editing                     | [tmdl-guidelines.md](./references/tmdl-guidelines.md)                              | Before generating or editing any TMDL file                                                  |
 | PBIP Projects                    | [pbip.md](./references/pbip.md)                                                    | When working with PBIP folders                                                              |
 | DAX Language                     | [dax-guidelines.md](./references/dax-guidelines.md)                                | When writing or reviewing any DAX code                                                      |
+| Field Parameters                 | [field-parameters.md](./references/field-parameters.md)                            | When creating/editing a field-parameter table (metric selector, dynamic view)   |
 | Metadata Discovery (DAX INFO functions) | [metadata-discovery.md](./references/metadata-discovery.md)                 | When discovering model metadata via DAX INFO functions (see [Workflow: Discover Semantic Model Metadata](#workflow-discover-semantic-model-metadata)) |
 | DAX Performance Decision Guide   | [dax-perf-decision-guide.md](./references/dax-perf-decision-guide.md)              | Start here when optimizing DAX                                                             |
 | DAX Performance Pattern Catalog  | [dax-perf-patterns.md](./references/dax-perf-patterns.md)                          | Load on demand after the decision guide identifies candidate patterns                       |
@@ -133,21 +130,13 @@ Steps:
 
 **When this applies:** User asks to inspect, list, or discover the model's structure - tables, columns, measures, relationships, hierarchies, partitions, roles, or storage internals. Also used internally by other workflows ([Modify](#workflow-modify-an-existing-model), [Analyze Best Practices](#workflow-analyze-best-practices), [AI Readiness](#workflow-semantic-model-ai-readiness)) to inventory the model before editing.
 
-> **Scope:** This workflow covers **metadata** discovery only. To answer natural-language/data questions against the model, use the `FabricIQ` skill instead.
-
 Pick a discovery method (highest priority first):
 
 1. **`powerbi-modeling-mcp` TOM inspection (List / Get)** - the default when `powerbi-modeling-mcp` is registered and connected to the target model **with Write access**. It returns the structured object model directly and stays in sync with pending edits, so it is preferred while authoring.
 
-2. **DAX `INFO` functions** - query the model's `INFO.VIEW.*` / `INFO.*` metadata rowsets. **MANDATORY: before writing or running ANY `INFO`-function DAX, you MUST load [metadata-discovery.md](./references/metadata-discovery.md) first**. Do NOT compose `INFO` queries from memory; load the reference and use its patterns. **Prioritize this method when any of the following is true:**
-   - **You lack Write permission** on the model. `powerbi-modeling-mcp` operations require Write access; with Read or Build access, use `INFO` functions.
-   - **`powerbi-modeling-mcp` is not registered or not available** in the current environment.
- 
-   Execute the `INFO`-function DAX through one of these tools (highest priority first):
-   - **FabricIQ `ExecuteQuery`** - requires only **Read** permission on the model. Load the `FabricIQ` skill for artifact discovery (`DiscoverArtifacts`) and execution mechanics.
-   - **`powerbi-modeling-mcp` `dax_query_operations`** - requires **Write** permission. Use this when the modeling MCP is already connected with Write access.
-
-> **Do NOT use FabricIQ `GetSemanticModelSchema` for authoring metadata discovery** - it is a data-consumption tool that can return stale metadata and miss recent edits. Even when FabricIQ is available, always use the `INFO` functions (via `ExecuteQuery`); they query the live model.
+2. **DAX `INFO.VIEW` functions** - query the model's `INFO.VIEW.*` metadata rowsets. **MANDATORY: before writing or running ANY `INFO`-function DAX, you MUST load [metadata-discovery.md](./references/metadata-discovery.md) first**. Do NOT compose `INFO` queries from memory; load the reference and use its patterns. **Prioritize this method when any of the following is true:**
+   - **You lack Write permission** on the model. `powerbi-modeling-mcp` List / Get operations require Write; with **Build** access, use `INFO.VIEW` functions executed via the `dax_query_operations` tool.
+   - **`powerbi-modeling-mcp` is not registered or not available**. Use Tier 2: export the model definition (`getDefinition`) and inspect the `.tmdl` files for schema metadata.
 
 Start narrow: run the scope-estimation and `INFO.VIEW.*` queries first, then project/filter to only the objects relevant to the task (see [metadata-discovery.md](./references/metadata-discovery.md)).
 
@@ -167,6 +156,23 @@ Steps:
    - **Adding relationships** - ensure key columns exist on both sides with matching data types;
    - **Adding measures** - verify referenced columns/tables exist;
 5. **Save & validate** - per [Saving Changes to a Semantic Model](#saving-changes-to-a-semantic-model) and [Validation Checklist](#validation-checklist).
+
+---
+
+## Workflow: Author a Field Parameter
+
+**When this applies:** User asks to create, edit, reorder, rename, or delete a field parameter. This is a self-contained model-side calculated table; the matching report slicer and visual are separate report work and out of scope here.
+
+Load [field-parameters.md](./references/field-parameters.md) before starting and follow the workflow it defines.
+
+Steps:
+
+1. **Connect & discover** - per [Connecting to a Semantic Model](#connecting-to-a-semantic-model). Detect any existing field parameter (a column carrying `ParameterMetadata` `"kind": 2`) before creating a duplicate.
+2. **Route to the matching sub-workflow** in [field-parameters.md](./references/field-parameters.md):
+   - **Create** a new parameter -> [Workflow: Create a field parameter](./references/field-parameters.md#workflow-create-a-field-parameter) (`table_operations` `CreateFieldParameter` at Tier 1).
+   - **Edit** an existing parameter (add / remove / reorder / relabel fields) -> [Workflow: Edit a field parameter](./references/field-parameters.md#workflow-edit-a-field-parameter) (partition rewrite via `partition_operations`; there is **no** `UpdateFieldParameter` operation).
+   - **Rename or delete** -> [Workflow: Rename or delete a field parameter](./references/field-parameters.md#workflow-rename-or-delete-a-field-parameter).
+3. **Save & validate** - per [Saving Changes to a Semantic Model](#saving-changes-to-a-semantic-model) and [Validation Checklist](#validation-checklist). Confirm the three columns and `ParameterMetadata` `"kind": 2` are intact so Desktop recognizes the table as a field parameter.
 
 ---
 
@@ -209,7 +215,7 @@ Steps:
 
 1. **Confirm scope & gather context** - via `ask_user`, confirm consumption mode (reports only / conversational BI / both) and model stability per the *When to Apply* section. Collect business context (process, key metrics, common natural-language questions, vocabulary). Do not invent.
 2. **Connect & inventory** - per [Connecting to a Semantic Model](#connecting-to-a-semantic-model). Capture model contents and the source location (PBIP / Fabric workspace / Desktop-only).
-3. **Evaluate & route** - walk the [Readiness Checklist](./references/semantic-model-ai-readiness.md#readiness-checklist) in order; for each gap, classify the fix per [Editing Capability](./references/semantic-model-ai-readiness.md#editing-capability) (agent-editable TOM metadata vs AI-specific artifacts the user configures in the Power BI "Prep data for AI" UI).
+3. **Evaluate & route** - walk the [Readiness Checklist](./references/semantic-model-ai-readiness.md#readiness-checklist) in order; for each gap, classify the fix per [Supported Editing Routes](./references/semantic-model-ai-readiness.md#supported-editing-routes) (agent-editable TOM metadata vs AI-specific artifacts the user configures in the Power BI "Prep data for AI" UI).
 4. **Present findings** grouped by severity, each tagged with routing (agent-applicable vs user-action-required). Wait for approval.
 5. **Apply approved changes** - apply TOM metadata fixes via [Modify an Existing Model](#workflow-modify-an-existing-model); for AI instructions, AI Data Schema, and Verified Answers, instruct the user to configure them in the Power BI "Prep data for AI" UI and, only if the user agrees, offer suggestions per the readiness reference; Desktop-only PBIX -> instruct user.
 6. **Save, validate, recommend live testing** - per [Saving Changes to a Semantic Model](#saving-changes-to-a-semantic-model) and [Validation Checklist](#validation-checklist); advise the user to test representative natural-language prompts in Copilot or the Data Agent and iterate.
